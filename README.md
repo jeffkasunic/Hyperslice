@@ -4,6 +4,12 @@ An interactive tesseract explorer. Rotate a 4D cube and watch the 3D shape it
 makes where it crosses ordinary space: cubes, prisms, octahedra, tetrahedra and
 more.
 
+By Jeff Kasunic · November 9, 2026 · [jeffkasunic.com](https://jeffkasunic.com)
+
+For the regular shapes in every dimension, from a point up through the
+tesseract and beyond, see
+[Platonic Solids in Higher Dimensions](https://jeffkasunic.com/mathematics/platonic-solids.html).
+
 ![Hyperslice showing an 8-faced polyhedron slice of a rotated tesseract, with the 4D rotation and slice position controls](assets/Hyperslice.png)
 
 ## Features
