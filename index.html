@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Rotate a tesseract in four dimensions and explore the 3D shapes it cuts through.">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <title>Hyperslice: Tesseract Explorer</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="shell top-inner">
+      <div class="brand">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 28 9.5v13L16 29 4 22.5v-13L16 3Zm0 6.5 6 3.25v6.5l-6 3.25-6-3.25v-6.5l6-3.25ZM4 9.5l6 3.25m18-3.25-6 3.25M16 29v-6.5M16 3v6.5M4 22.5l6-3.25m18 3.25-6-3.25"/></svg>
+        <span>Hyperslice<span class="brand-divider">/</span><span class="brand-caption">Geometry lab</span></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="intro" aria-labelledby="title">
+      <p class="eyebrow"><span>01</span> / THE FOURTH SPATIAL DIMENSION</p>
+      <h1 id="title">Tesseract <em>Explorer</em></h1>
+      <p>Rotate a 4D cube and watch its intersection with 3D space change shape.</p>
+    </section>
+
+    <div class="workbench">
+      <section class="viewport panel" aria-labelledby="slice-title">
+        <div class="view-head">
+          <div>
+            <p class="eyebrow view-label"><i></i> LIVE 3D CROSS-SECTION</p>
+            <h2 id="slice-title">Polyhedral slice</h2>
+          </div>
+          <output id="slice-badge" class="slice-badge" aria-label="Current slice coordinate">W = +0.35</output>
+        </div>
+
+        <div class="stage" id="stage">
+          <svg id="view" tabindex="0" role="img" aria-labelledby="view-title" aria-describedby="orbit-hint">
+            <title id="view-title">Interactive 3D view of the tesseract cross-section</title>
+            <g id="grid" aria-hidden="true"></g>
+            <g id="shape" aria-hidden="true"></g>
+          </svg>
+          <p class="empty" id="empty" hidden>The plane misses the tesseract.<br><small>Move W back toward zero to find it.</small></p>
+          <div id="axis" class="axis" aria-hidden="true"></div>
+          <p id="orbit-hint" class="orbit-hint">
+            <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M6 4l2-2 2 2M6 12l2 2 2-2M4 6 2 8l2 2m8-4 2 2-2 2"/></svg>
+            Drag to orbit <span>·</span> Scroll to zoom<span class="visually-hidden">. Arrow keys orbit; plus and minus keys zoom.</span>
+          </p>
+        </div>
+
+        <dl class="stats">
+          <div><dt>Vertices</dt><dd id="vertices">–</dd></div>
+          <div><dt>Edges</dt><dd id="edges">–</dd></div>
+          <div><dt>Faces</dt><dd id="faces">–</dd></div>
+        </dl>
+        <p id="slice-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></p>
+      </section>
+
+      <aside class="controls panel" aria-labelledby="controls-title">
+        <div class="control-head">
+          <h2 id="controls-title">Controls</h2>
+          <button id="reset" type="button" class="reset"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6a5.3 5.3 0 1 1 .7 6M3 2.6V6h3.4"/></svg> Reset</button>
+        </div>
+
+        <section class="control-group" aria-labelledby="rotation-title">
+          <h3 id="rotation-title">4D rotation</h3>
+          <p class="group-hint">Mix each spatial axis with W.</p>
+          <div id="w-planes" class="plane-list"></div>
+          <details>
+            <summary>Spatial planes <span>XY · XZ · YZ</span></summary>
+            <p class="group-hint spatial-hint">These turn the slice in 3D after the W rotations.</p>
+            <div id="spatial-planes" class="plane-list"></div>
+          </details>
+          <p id="active" class="active"></p>
+        </section>
+
+        <section class="control-group depth" aria-labelledby="depth-title">
+          <div class="depth-head">
+            <h3 id="depth-title"><label for="depth">Slice position</label></h3>
+            <output for="depth" id="depth-value">+0.35</output>
+          </div>
+          <input type="range" id="depth" min="-2" max="2" step="0.01" value="0.35" aria-describedby="depth-hint">
+          <p class="group-hint" id="depth-hint">Move the 3D plane along W.</p>
+        </section>
+
+        <section class="control-group" aria-labelledby="view-options-title">
+          <h3 id="view-options-title">View</h3>
+          <div class="preset-row">
+            <button type="button" id="toggle-hidden" aria-pressed="true">Hidden edges</button>
+            <button type="button" id="toggle-spin" aria-pressed="false">Auto-rotate</button>
+            <button type="button" id="toggle-sweep" aria-pressed="false">Sweep W</button>
+          </div>
+        </section>
+
+        <section class="control-group presets" aria-labelledby="presets-title">
+          <h3 id="presets-title">Sample slices</h3>
+          <div class="preset-row">
+            <button type="button" data-preset="cube" aria-pressed="false">Cube</button>
+            <button type="button" data-preset="prism" aria-pressed="false">Hex prism</button>
+            <button type="button" data-preset="octahedron" aria-pressed="false">Octahedron</button>
+          </div>
+        </section>
+      </aside>
+    </div>
+
+    <div class="notes">
+      <section class="panel note challenge" aria-labelledby="challenge-title">
+        <div class="note-icon lock-icon">
+          <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 18 9 21 3 15 12 3Zm0 0L9 21m0 0 12-3M3 15l18 3"/></svg>
+        </div>
+        <div class="note-text">
+          <p class="eyebrow">CHALLENGE</p>
+          <h2 id="challenge-title">Shape lock</h2>
+          <p id="challenge-hint">Find a tetrahedral slice with 4 vertices, 6 edges, and 4 faces.</p>
+          <p id="challenge-status" class="challenge-status" role="status"></p>
+          <p id="challenge-score" class="challenge-score"></p>
+        </div>
+        <button id="challenge" type="button" class="challenge-button">Try the lock <span aria-hidden="true">→</span></button>
+      </section>
+      <section class="panel note explanation" aria-labelledby="explanation-title">
+        <div class="note-icon info-icon">
+          <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-8v.2"/></svg>
+        </div>
+        <div class="note-text">
+          <p class="eyebrow">THE GEOMETRY</p>
+          <h2 id="explanation-title">What are you seeing?</h2>
+          <p>The solid is the part of the tesseract that lies at the chosen W coordinate. Here X, Y, Z, and W all measure position. In spacetime, the fourth coordinate measures time.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
