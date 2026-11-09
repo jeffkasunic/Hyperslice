@@ -277,13 +277,13 @@ function draw(): void {
       grid.push(`<path d="M${svgPoint(project(row[0]))}L${svgPoint(project(row[1]))}" opacity="${index === 0 ? 0.47 : 0.29}"/>`);
     }
   }
-  byId("grid").innerHTML = `<g stroke="#595e94" stroke-width="1" fill="none">${grid.join("")}</g>`;
+  byId("grid").innerHTML = `<g stroke="#5a544d" stroke-width="1" fill="none">${grid.join("")}</g>`;
 
   const points = geometry.points.map(project);
   const front = new Set<number>();
   const light = [-0.28, 0.67, 0.69];
   const open = state.unlocked;
-  const hue = open ? 175 : 254;
+  const hue = open ? 177 : 28;
   const fragments: string[] = [];
   const faceLayers = geometry.faces.map(({ indices, normal }) => ({
     indices,
@@ -291,7 +291,7 @@ function draw(): void {
     depth: indices.reduce((sum, index) => sum + points[index][2], 0) / indices.length,
   })).sort((a, b) => a.depth - b.depth);
 
-  const outline = open ? "#97f1df" : "#c9b8ff";
+  const outline = open ? "#76c5c1" : "#e9a970";
   // Edge key -> endpoints, and whether any face touching it faces the camera.
   const edgeVisibility = new Map<string, { a: number; b: number; visible: boolean }>();
   for (const { indices, normal } of faceLayers) {
@@ -305,8 +305,8 @@ function draw(): void {
     });
     if (!facing) continue;
     indices.forEach(index => front.add(index));
-    const shade = 36 + Math.max(0, dot(normal, light)) * 26;
-    fragments.push(`<polygon points="${indices.map(index => svgPoint(points[index])).join(" ")}" fill="hsl(${hue + normal[0] * 12} 46% ${shade}%)" stroke="${outline}" stroke-width="1.65" stroke-linejoin="round"/>`);
+    const shade = 27 + Math.max(0, dot(normal, light)) * 25;
+    fragments.push(`<polygon points="${indices.map(index => svgPoint(points[index])).join(" ")}" fill="hsl(${hue + normal[0] * 8} 42% ${shade}%)" stroke="${outline}" stroke-width="1.65" stroke-linejoin="round"/>`);
   }
   // Back edges go on top of the faces, dashed, the way technical drawings show them.
   if (state.hiddenEdges && geometry.dimension === 3) {
@@ -318,16 +318,16 @@ function draw(): void {
     });
   }
   if (geometry.dimension === 1) {
-    fragments.push(`<polyline points="${points.map(svgPoint).join(" ")}" fill="none" stroke="#c9b8ff" stroke-width="2"/>`);
+    fragments.push(`<polyline points="${points.map(svgPoint).join(" ")}" fill="none" stroke="${outline}" stroke-width="2"/>`);
   }
   if (geometry.dimension < 2) points.forEach((_, index) => front.add(index));
   for (const index of front) {
     const [x, y] = points[index];
-    fragments.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.65" fill="${open ? "#d1fff2" : "#f1e8ff"}"/>`);
+    fragments.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.65" fill="${open ? "#b6e0de" : "#f3d1b3"}"/>`);
   }
   byId("shape").innerHTML = fragments.join("");
 
-  const axisColors = ["#dd9abf", "#91e2ce", "#aeb3ff"];
+  const axisColors = ["#d67060", "#e8b64e", "#6ebede"];
   const axes = ["X", "Y", "Z"].map((label, index) => {
     const [x, y, z] = orient([0, 1, 2].map(axis => Number(axis === index)));
     const end = [27 + 19 * x, 32 - 19 * y];
@@ -336,7 +336,7 @@ function draw(): void {
   }).sort((a, b) => a.z - b.z);
   byId("axis").innerHTML = `<svg width="60" height="60" viewBox="0 0 60 60">${axes.map(({ label, color, end, text }) =>
     `<path d="M27,32L${svgPoint(end)}" stroke="${color}" stroke-width="1.3"/><text x="${text[0]}" y="${text[1]}" fill="${color}" text-anchor="middle" font-size="9" font-family="monospace">${label}</text>`
-  ).join("")}<circle cx="27" cy="32" r="2" fill="#ddd8f8"/></svg>`;
+  ).join("")}<circle cx="27" cy="32" r="2" fill="#e6e1da"/></svg>`;
 }
 
 // Any direct change to the slice position takes over from the W sweep.
