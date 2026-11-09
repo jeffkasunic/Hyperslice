@@ -1,0 +1,4 @@
+# Keep every file served from this folder (HTML, JS, CSS) out of search engines.
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow"
+</IfModule>
