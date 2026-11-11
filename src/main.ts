@@ -24,10 +24,19 @@ interface State extends Camera, View {
 type ToggleKey = "hiddenEdges" | "spin" | "sweep";
 type Counts = [vertices: number, edges: number, faces: number];
 
-const sampleAngles: Partial<Record<string, readonly number[]>> = {
-  cube: [0, 0, 0, 0, 0, 0],
-  prism: [45, 35, 0, 0, 0, 0],
-  octahedron: [45, Math.atan(1 / Math.sqrt(2)) * 180 / Math.PI, 30, 0, 0, 0],
+// Each sample is a tesseract orientation plus the slice position that cuts it.
+const faceFirst = [45, 0, 0, 0, 0, 0];
+const edgeFirst = [45, 35, 0, 0, 0, 0];
+const vertexFirst = [45, Math.atan(1 / Math.sqrt(2)) * 180 / Math.PI, 30, 0, 0, 0];
+const samples: Partial<Record<string, { angles: readonly number[]; offset: number }>> = {
+  cube: { angles: [0, 0, 0, 0, 0, 0], offset: 0 },
+  box: { angles: faceFirst, offset: 0 },
+  "triangular-prism": { angles: edgeFirst, offset: 1 },
+  "pentagonal-prism": { angles: [30, 30, 0, 0, 0, 0], offset: 0.4 },
+  prism: { angles: edgeFirst, offset: 0 },
+  tetrahedron: { angles: vertexFirst, offset: 1.5 },
+  "truncated-tetrahedron": { angles: vertexFirst, offset: 0.5 },
+  octahedron: { angles: vertexFirst, offset: 0 },
 };
 
 const introAngles = [32, -25, 19, 0, 0, 0];
@@ -64,6 +73,7 @@ function byId<T extends Element = HTMLElement>(id: string): T {
 const svg = byId<SVGSVGElement>("view");
 const stage = byId("stage");
 const depth = byId<HTMLInputElement>("depth");
+const depthValue = byId<HTMLInputElement>("depth-value");
 const presets = [...document.querySelectorAll<HTMLButtonElement>("[data-preset]")];
 const challengeButton = byId<HTMLButtonElement>("challenge");
 const challengeCard = required(challengeButton.closest(".challenge"), ".challenge");
@@ -95,18 +105,43 @@ const rotationInputs = planes.map(({ name, label }, index) => {
   row.innerHTML = `
     <div class="plane-label">
       <label for="plane-${name}"><strong>${name}</strong> ${label}</label>
-      <output for="plane-${name}"></output>
+      <input type="text" class="readout" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="${name} angle in degrees">
     </div>
     <input type="range" id="plane-${name}" min="-180" max="180" step="0.1">
   `;
   target.append(row);
-  const input = required(row.querySelector("input"), "plane input");
+  const input = required(row.querySelector<HTMLInputElement>("input[type=range]"), "plane input");
+  const field = required(row.querySelector<HTMLInputElement>(".readout"), "plane readout");
   input.addEventListener("input", () => {
     state.angles[index] = input.valueAsNumber;
     update();
   });
-  return { input, output: required(row.querySelector("output"), "plane output") };
+  bindReadout(field, () => degrees(state.angles[index]), value => {
+    // Typed angles wrap around the circle rather than clamping.
+    state.angles[index] = value >= -180 && value <= 180 ? value : ((value + 180) % 360 + 360) % 360 - 180;
+    update();
+  });
+  return { input, field };
 });
+
+// Readouts double as text fields: Enter or leaving the field applies, Escape reverts.
+function bindReadout(field: HTMLInputElement, format: () => string, apply: (value: number) => void): void {
+  const commit = () => {
+    const value = Number(field.value.trim().replace(/^W\s*=\s*/i, "").replace(/[−–]/g, "-").replace(/°$/, ""));
+    if (field.value.trim() !== "" && Number.isFinite(value)) apply(Math.round(value * 100) / 100);
+    field.value = format();
+  };
+  field.addEventListener("change", commit);
+  field.addEventListener("focus", () => field.select());
+  field.addEventListener("keydown", event => {
+    if (event.key === "Enter") { commit(); field.select(); }
+    else if (event.key === "Escape") { field.value = format(); field.select(); }
+  });
+}
+
+function setReadout(field: HTMLInputElement, text: string): void {
+  if (document.activeElement !== field) field.value = text;
+}
 
 function rangePosition(input: HTMLInputElement, value: number): void {
   input.value = String(value);
@@ -115,23 +150,23 @@ function rangePosition(input: HTMLInputElement, value: number): void {
 
 function update(): void {
   const current = geometry = slice(state.angles, state.offset);
-  const preset = Object.entries(sampleAngles).find(([, angles]) =>
-    state.offset === 0 && angles?.every((angle, index) => angle === state.angles[index])
+  const preset = Object.entries(samples).find(([, sample]) =>
+    sample && state.offset === sample.offset && sample.angles.every((angle, index) => angle === state.angles[index])
   )?.[0];
   for (const button of presets) {
     button.setAttribute("aria-pressed", String(button.dataset.preset === preset));
   }
 
-  rotationInputs.forEach(({ input, output }, index) => {
+  rotationInputs.forEach(({ input, field }, index) => {
     const value = state.angles[index];
     rangePosition(input, value);
-    output.textContent = degrees(value);
-    input.setAttribute("aria-valuetext", output.textContent);
+    setReadout(field, degrees(value));
+    input.setAttribute("aria-valuetext", degrees(value));
   });
   const offset = signed(state.offset, 2);
   rangePosition(depth, state.offset);
   depth.setAttribute("aria-valuetext", offset);
-  byId("depth-value").textContent = offset;
+  setReadout(depthValue, offset);
   byId("slice-badge").textContent = "W = " + offset;
   byId("depth-hint").textContent = "Intersects from " + signed(-current.extent, 2) + " to " + signed(current.extent, 2) + ".";
   const active = planes.filter((_, index) => Math.abs(state.angles[index]) > 1e-8).map(plane => plane.name);
@@ -352,12 +387,17 @@ depth.addEventListener("input", () => {
   setView({ sweep: false });
   update();
 });
+bindReadout(depthValue, () => signed(state.offset, 2), value => {
+  state.offset = Math.min(Number(depth.max), Math.max(Number(depth.min), value));
+  setView({ sweep: false });
+  update();
+});
 for (const button of presets) {
   button.addEventListener("click", () => {
-    const angles = sampleAngles[button.dataset.preset ?? ""];
-    if (!angles) return;
-    state.angles = [...angles];
-    state.offset = 0;
+    const sample = samples[button.dataset.preset ?? ""];
+    if (!sample) return;
+    state.angles = [...sample.angles];
+    state.offset = sample.offset;
     setView({ sweep: false });
     update();
   });
@@ -460,11 +500,56 @@ const orbitKeys: Partial<Record<string, [number, number]>> = {
   ArrowUp: [0, -0.12], ArrowDown: [0, 0.12],
 };
 const zoomKeys: Partial<Record<string, number>> = { "+": 1.15, "=": 1.15, "-": 1 / 1.15, "_": 1 / 1.15 };
+// Full screen uses the Fullscreen API where the browser allows it on an element
+// (not iPhone Safari); otherwise the viewer is stretched over the page with CSS.
+const viewport = required(stage.closest<HTMLElement>(".viewport"), ".viewport");
+const fullscreenButton = byId<HTMLButtonElement>("fullscreen");
+const isFullscreen = () => document.fullscreenElement === viewport || viewport.classList.contains("expanded");
+// In full screen the whole control panel moves into a dock beside the view,
+// then returns to the page on exit.
+const dock = byId("dock");
+const controlsPanel = required(document.querySelector<HTMLElement>(".controls"), ".controls");
+const dockedGroups = [...controlsPanel.children].map(group => {
+  const home = document.createComment("docked control");
+  group.before(home);
+  return { group, home };
+});
+function syncFullscreen(): void {
+  const on = isFullscreen();
+  viewport.classList.toggle("is-full", on);
+  const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  for (const { group, home } of dockedGroups) {
+    if (on && group.parentElement !== dock) dock.append(group);
+    else if (!on && group.parentElement === dock) home.after(group);
+  }
+  if (focused && focused !== document.activeElement) focused.focus({ preventScroll: true });
+  fullscreenButton.setAttribute("aria-pressed", String(on));
+  fullscreenButton.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
+  fullscreenButton.title = (on ? "Exit full screen" : "Full screen") + " (F)";
+}
+function setExpanded(on: boolean): void {
+  viewport.classList.toggle("expanded", on);
+  document.body.classList.toggle("viewer-expanded", on);
+  syncFullscreen();
+}
+function toggleFullscreen(): void {
+  if (document.fullscreenElement) void document.exitFullscreen();
+  else if (viewport.classList.contains("expanded")) setExpanded(false);
+  else if (document.fullscreenEnabled) viewport.requestFullscreen().catch(() => setExpanded(true));
+  else setExpanded(true);
+}
+fullscreenButton.addEventListener("click", toggleFullscreen);
+document.addEventListener("fullscreenchange", syncFullscreen);
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && viewport.classList.contains("expanded")) setExpanded(false);
+});
+
 svg.addEventListener("keydown", event => {
   const direction = orbitKeys[event.key];
   const zoom = zoomKeys[event.key];
   if (direction) orbit(...direction);
   else if (zoom) zoomBy(zoom);
+  else if ((event.key === "f" || event.key === "F") && !event.metaKey && !event.ctrlKey && !event.altKey) toggleFullscreen();
   else return;
   event.preventDefault();
 });

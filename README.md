@@ -21,7 +21,7 @@ tesseract and beyond, see
   shape that is only given when the geometry really matches it.
 - **View options:** show or hide hidden edges, auto-rotate, and sweep W
   automatically.
-- **Sample slices:** jump to a cube, hexagonal prism or octahedron.
+- **Sample slices:** jump to a cube, rectangular box, triangular, pentagonal or hexagonal prism, tetrahedron, truncated tetrahedron or octahedron.
 - **Shape lock challenge:** find a tetrahedral slice. Your best score is saved
   in the browser.
 
