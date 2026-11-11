@@ -402,7 +402,7 @@ function wallSceneScale(box: Box): number {
   const corners = [[-w, -h, 0], [w, -h, 0], [w, h, 0], [-w, h, 0]].map(orient);
   const across = Math.max(...corners.map(([x]) => Math.abs(x)));
   const down = Math.max(...corners.map(([, y]) => Math.abs(y)));
-  const closer = 1.2;
+  const closer = 1.05;
   return closer * Math.min(box.w / (2 * across), box.h / (2 * down));
 }
 
