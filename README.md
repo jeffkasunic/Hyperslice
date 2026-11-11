@@ -22,6 +22,11 @@ tesseract and beyond, see
 - **View options:** show or hide hidden edges, auto-rotate, and sweep W
   automatically.
 - **Sample slices:** jump to a cube, rectangular box, triangular, pentagonal or hexagonal prism, tetrahedron, truncated tetrahedron or octahedron.
+- **One dimension down:** a guided section that pushes a sphere and a cube
+  through a flat wall, then a hypersphere and a tesseract through 3D space,
+  laying each shape out as a row of slices so the 3D → 2D case can be
+  compared with the 4D → 3D one. The tesseract step can open its current slice
+  in the explorer.
 - **Shape lock challenge:** find a tetrahedral slice. Your best score is saved
   in the browser.
 

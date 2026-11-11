@@ -50,8 +50,8 @@ h1 em { color: var(--accent); font-style: normal; }
 .byline a, .related a { color: var(--accent); text-underline-offset: 2px; }
 .byline a:hover, .related a:hover { color: var(--accent-core); }
 .note .note-text > p.related { margin-top: 6px; }
-.explanation .related a { color: var(--teal); }
-.explanation .related a:hover { color: var(--teal-core); }
+.explanation .note-text a { color: var(--teal); text-underline-offset: 2px; }
+.explanation .note-text a:hover { color: var(--teal-core); }
 .workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(305px, 338px); gap: 18px; align-items: stretch; }
 .panel { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
 .viewport { position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: 514px; background: radial-gradient(ellipse at 48% 49%, #37332f 0%, #2b2826 47%, #262422 77%); }
@@ -137,7 +137,55 @@ summary span { margin-left: 4px; color: var(--muted); font: 11px var(--mono); }
 .note-text > .challenge-score:not(:empty) { margin-top: 3px; font: 11px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
 .challenge-score b { color: var(--gold); font-weight: 600; }
 .challenge.unlocked { border-color: #2f7470; background: #303836; }
+
+/* Primer: one dimension down. */
+.primer { margin: 0 0 40px; scroll-margin-top: 16px; }
+.primer-intro { padding: 14px 0 18px; max-width: 780px; }
+.primer-intro .eyebrow { font-size: 11px; }
+.primer-intro .eyebrow span { color: var(--teal); }
+.primer-intro h2 { font-size: clamp(28px, 3.6vw, 42px); line-height: 1.06; margin: 7px 0 9px; letter-spacing: -.055em; font-weight: 720; }
+.primer-intro h2 em { color: var(--accent); font-style: normal; }
+.primer-intro > p:last-child { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.primer-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.primer-steps button { display: flex; gap: 11px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel); color: var(--ink); font-size: 13px; font-weight: 550; line-height: 1.3; text-align: left; }
+.primer-steps button b { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border: 1px solid var(--control-line); border-radius: 50%; color: var(--dim); font: 600 11px var(--mono); }
+.primer-steps button small { display: block; margin-bottom: 1px; color: var(--dim); font: 500 10px var(--mono); letter-spacing: .1em; }
+.primer-steps button:hover { border-color: var(--accent); }
+.primer-steps button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.primer-steps button[aria-pressed="true"] b { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+.primer-steps button[aria-pressed="true"] small { color: var(--accent-core); }
+.primer-body { overflow: hidden; }
+.primer-caption { padding: 16px 20px 15px; border-bottom: 1px solid var(--line); }
+.primer-caption h3 { margin: 0 0 4px; font-size: 18px; font-weight: 660; letter-spacing: -.03em; }
+.primer-caption p { margin: 0; max-width: 860px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.primer-panes { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.primer-pane { position: relative; height: 430px; background: radial-gradient(ellipse at 50% 48%, #35312e 0%, #2b2826 55%, #262422 90%); }
+.primer-pane + .primer-pane { border-left: 1px solid var(--line); }
+.primer-pane-head { position: absolute; inset: 16px 18px auto; pointer-events: none; }
+.primer-pane-head .eyebrow { color: var(--teal); }
+.primer-pane.inside .eyebrow { color: var(--accent); }
+.primer-pane-title { margin: 4px 0 0; font-size: 16px; font-weight: 650; letter-spacing: -.025em; }
+.primer-pane svg { display: block; width: 100%; height: 100%; }
+.primer-pane svg.draggable { cursor: grab; touch-action: pan-y; }
+.primer-pane svg.draggable:active { cursor: grabbing; }
+.primer-readout { position: absolute; inset: auto 18px 15px; margin: 0; color: var(--accent-core); font: 12px var(--mono); text-align: center; pointer-events: none; }
+.primer-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding: 14px 20px 16px; border-top: 1px solid var(--line); background: #282624; }
+.primer-play { display: inline-flex; gap: 7px; align-items: center; min-width: 82px; justify-content: center; padding: 8px 12px; border: 1px solid var(--control-line); border-radius: 7px; background: var(--control); color: var(--ink); font-size: 12px; }
+.primer-play:hover { border-color: var(--accent); background: var(--accent-soft); }
+.primer-play svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.primer-play .play { fill: currentColor; }
+.primer-play .pause, .primer-play[aria-pressed="true"] .play { display: none; }
+.primer-play[aria-pressed="true"] .pause { display: block; }
+.primer-slider { flex: 1 1 260px; min-width: 200px; }
+.primer-slider label { font-size: 13px; font-weight: 650; }
+.primer-value { color: var(--teal); font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+#primer-position { --track-color: var(--teal); margin-top: 5px; }
+#primer-position::-webkit-slider-thumb { background: var(--teal-core); border-color: #b6e0de; box-shadow: 0 0 9px #48b2ac55; }
+#primer-position::-moz-range-thumb { background: var(--teal-core); border-color: #b6e0de; box-shadow: 0 0 9px #48b2ac55; }
+.primer-tilt { margin-top: 0; }
+#primer-explore { align-self: center; }
 @media (max-width: 980px) {
+  .primer-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shell { width: calc(100% - 44px); }
   .notes { grid-template-columns: 1fr 1fr; }
   .note.challenge { flex-wrap: wrap; }
@@ -163,6 +211,11 @@ summary span { margin-left: 4px; color: var(--muted); font: 11px var(--mono); }
   .viewport.is-full .stats { grid-row: 3; }
   .note.challenge { flex-wrap: nowrap; }
   .challenge-button { margin-left: 0; }
+  .primer-panes { grid-template-columns: 1fr; }
+  .primer-pane { height: 330px; }
+  .primer-pane + .primer-pane { border-left: 0; border-top: 1px solid var(--line); }
+  .primer-caption, .primer-controls { padding-inline: 15px; }
+  .primer-steps button { padding: 9px 10px; font-size: 12px; }
 }
 @media (max-width: 365px) {
   .note.challenge { flex-wrap: wrap; }

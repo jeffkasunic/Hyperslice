@@ -2,6 +2,7 @@
 import "./styles.css";
 import { dot, planes, slice, type Angles, type Slice, type Vector } from "./geometry";
 import { shapeName } from "./shapes";
+import { initPrimer } from "./primer";
 
 interface Camera {
   yaw: number;
@@ -559,5 +560,15 @@ new ResizeObserver(([entry]) => {
   svg.setAttribute("viewBox", "0 0 " + scene.width + " " + scene.height);
   scheduleDraw();
 }).observe(stage);
+
+// The primer's tesseract step can open its current slice here.
+initPrimer((angles, offset) => {
+  Object.assign(state, { angles, offset, challenge: false, solved: false });
+  setView({ sweep: false });
+  update();
+  const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  viewport.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
+  svg.focus({ preventScroll: true });
+});
 
 update();
