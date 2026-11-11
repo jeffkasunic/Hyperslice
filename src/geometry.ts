@@ -27,8 +27,6 @@ export interface Slice {
   dimension: 0 | 1 | 2 | 3;
   /** Largest W reached by any tesseract corner. */
   extent: number;
-  /** W range near each end that cuts off a lone corner (a tetrahedron). */
-  cornerGap: number;
 }
 
 /** Rotation angles in degrees, one per entry of `planes`, in the same order. */
@@ -93,10 +91,6 @@ export function slice(angles: Angles, offset: number): Slice {
   const rotated = vertices.map(rotate);
   const basis = [0, 1, 2, 3].map(axis => rotate([0, 1, 2, 3].map(i => Number(i === axis))));
   const extent = Math.max(...rotated.map(point => point[3]));
-  // The highest corner sits at W = extent. The next highest differs from it in
-  // the axis that leans least into W, so a lone corner (a tetrahedron) shows
-  // for W between extent - cornerGap and extent, and mirrored below zero.
-  const cornerGap = 2 * Math.min(...basis.map(axis => Math.abs(axis[3])));
   const points: Vector[] = [];
   function add(point: Vector): void {
     const xyz = point.slice(0, 3);
@@ -118,7 +112,7 @@ export function slice(angles: Angles, offset: number): Slice {
     }
   }
 
-  const result: Slice = { points, faces: [], edgeCount: 0, dimension: 0, extent, cornerGap };
+  const result: Slice = { points, faces: [], edgeCount: 0, dimension: 0, extent };
   if (points.length < 2) return result;
 
   const direction = sub(points[1], points[0]);

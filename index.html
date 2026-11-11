@@ -25,7 +25,7 @@
     <section class="intro" aria-labelledby="title">
       <p class="eyebrow"><span>01</span> / THE FOURTH SPATIAL DIMENSION</p>
       <h1 id="title">Tesseract <em>Explorer</em></h1>
-      <p class="byline">By Jeff Kasunic <span aria-hidden="true">&middot;</span> <time datetime="2026-11-09">November 9, 2026</time> <span aria-hidden="true">&middot;</span> <a href="https://jeffkasunic.com">jeffkasunic.com</a></p>
+      <p class="byline">By Jeff Kasunic <span aria-hidden="true">&middot;</span> <time datetime="2026-11-09">November 9, 2026</time> <span aria-hidden="true">&middot;</span> <a href="https://jeffkasunic.com" target="_blank" rel="noopener">jeffkasunic.com</a></p>
       <p>Rotate a 4D cube and watch its intersection with 3D space change shape.</p>
     </section>
 
@@ -38,6 +38,7 @@
           </div>
           <div class="view-actions">
             <output id="slice-badge" class="slice-badge" aria-label="Current slice coordinate">W = +0.35</output>
+            <button id="reset-view" type="button" class="icon-button" aria-label="Reset view" title="Reset view (R)"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6a5.3 5.3 0 1 1 .7 6M3 2.6V6h3.4"/></svg></button>
             <button id="fullscreen" type="button" class="icon-button" aria-label="Full screen" title="Full screen (F)" aria-pressed="false">
               <svg class="enter" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>
               <svg class="exit" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2v4H2M10 2v4h4M14 10h-4v4M2 10h4v4"/></svg>
@@ -55,7 +56,7 @@
           <div id="axis" class="axis" aria-hidden="true"></div>
           <p id="orbit-hint" class="orbit-hint">
             <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12M6 4l2-2 2 2M6 12l2 2 2-2M4 6 2 8l2 2m8-4 2 2-2 2"/></svg>
-            Drag to orbit <span>·</span> Scroll to zoom<span class="visually-hidden">. Arrow keys orbit; plus and minus keys zoom; F toggles full screen.</span>
+            Drag to orbit <span>·</span> Scroll to zoom<span class="visually-hidden">. Arrow keys orbit; plus and minus keys zoom; R resets the view; F toggles full screen.</span>
           </p>
         </div>
 
@@ -122,19 +123,6 @@
     </div>
 
     <div class="notes">
-      <section class="panel note challenge" aria-labelledby="challenge-title">
-        <div class="note-icon lock-icon">
-          <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 18 9 21 3 15 12 3Zm0 0L9 21m0 0 12-3M3 15l18 3"/></svg>
-        </div>
-        <div class="note-text">
-          <p class="eyebrow">CHALLENGE</p>
-          <h2 id="challenge-title">Shape lock</h2>
-          <p id="challenge-hint">Find a tetrahedral slice with 4 vertices, 6 edges, and 4 faces.</p>
-          <p id="challenge-status" class="challenge-status" role="status"></p>
-          <p id="challenge-score" class="challenge-score"></p>
-        </div>
-        <button id="challenge" type="button" class="challenge-button">Try the lock <span aria-hidden="true">→</span></button>
-      </section>
       <section class="panel note explanation" aria-labelledby="explanation-title">
         <div class="note-icon info-icon">
           <svg width="23" height="23" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5m0-8v.2"/></svg>
@@ -143,7 +131,7 @@
           <p class="eyebrow">THE GEOMETRY</p>
           <h2 id="explanation-title">What are you seeing?</h2>
           <p>The solid is the part of the tesseract that lies at the chosen W coordinate. Here X, Y, Z, and W all measure position. In spacetime, the fourth coordinate measures time. <a href="#primer">See how slicing works, one dimension down</a>.</p>
-          <p class="related">The tesseract is one of the regular shapes followed from a point up to higher dimensions in <a href="https://jeffkasunic.com/mathematics/platonic-solids.html">Platonic Solids in Higher Dimensions</a>.</p>
+          <p class="related">The tesseract is one of the regular shapes followed from a point up to higher dimensions in <a href="https://jeffkasunic.com/mathematics/platonic-solids.html" target="_blank" rel="noopener">Platonic Solids in Higher Dimensions</a>.</p>
         </div>
       </section>
     </div>
@@ -154,17 +142,41 @@
         <p>We can't see four dimensions, but we can see the same idea one dimension down. Push a 3D shape through a flat wall and the wall only ever holds one 2D slice of it. Our 3D space does the same to a 4D shape.</p>
       </div>
 
+      <div class="primer-viewer" id="primer-viewer">
       <div class="primer-steps" role="group" aria-label="Steps">
-        <button type="button" data-step="sphere" aria-pressed="true"><b>1</b><span><small>3D → 2D</small>Sphere → circle</span></button>
-        <button type="button" data-step="cube" aria-pressed="false"><b>2</b><span><small>3D → 2D</small>Cube → square</span></button>
-        <button type="button" data-step="hypersphere" aria-pressed="false"><b>3</b><span><small>4D → 3D</small>Hypersphere → sphere</span></button>
-        <button type="button" data-step="tesseract" aria-pressed="false"><b>4</b><span><small>4D → 3D</small>Tesseract → cube</span></button>
+        <div class="primer-step-group" role="group" aria-labelledby="steps-1d" style="--count: 1">
+          <p class="primer-step-label" id="steps-1d">1D → 0D</p>
+          <div class="primer-step-buttons">
+            <button type="button" data-step="line" aria-pressed="false"><b>1</b>Line → point</button>
+          </div>
+        </div>
+        <div class="primer-step-group" role="group" aria-labelledby="steps-3d" style="--count: 2">
+          <p class="primer-step-label" id="steps-3d">3D → 2D</p>
+          <div class="primer-step-buttons">
+            <button type="button" data-step="sphere" aria-pressed="true"><b>2</b>Sphere → circle</button>
+            <button type="button" data-step="cube" aria-pressed="false"><b>3</b>Cube → square</button>
+          </div>
+        </div>
+        <div class="primer-step-group" role="group" aria-labelledby="steps-4d" style="--count: 3">
+          <p class="primer-step-label" id="steps-4d">4D → 3D</p>
+          <div class="primer-step-buttons">
+            <button type="button" data-step="hypersphere" aria-pressed="false"><b>4</b>Hypersphere → sphere</button>
+            <button type="button" data-step="tesseract" aria-pressed="false"><b>5</b>Tesseract → cube</button>
+            <button type="button" data-step="cube-pyramid" aria-pressed="false"><b>6</b>Cube pyramid → cube</button>
+          </div>
+        </div>
       </div>
 
       <div class="panel primer-body">
         <div class="primer-caption">
-          <h3 id="primer-step-title">A sphere passes through a wall</h3>
-          <p id="primer-step-text"></p>
+          <div>
+            <h3 id="primer-step-title">A sphere passes through a wall</h3>
+            <p id="primer-step-text"></p>
+          </div>
+          <button id="primer-fullscreen" type="button" class="icon-button" aria-label="Full screen" title="Full screen (F)" aria-pressed="false">
+            <svg class="enter" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4"/></svg>
+            <svg class="exit" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2v4H2M10 2v4h4M14 10h-4v4M2 10h4v4"/></svg>
+          </button>
         </div>
         <div class="primer-panes" id="primer-stage">
           <div class="primer-pane">
@@ -172,6 +184,7 @@
               <p class="eyebrow">OUTSIDE VIEW</p>
               <p class="primer-pane-title" id="primer-outside-title"></p>
             </div>
+            <button type="button" class="icon-button primer-reset" data-reset="outside" aria-label="Reset outside view" title="Reset view"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6a5.3 5.3 0 1 1 .7 6M3 2.6V6h3.4"/></svg></button>
             <svg id="primer-outside" role="img"><g id="primer-outside-shape"></g></svg>
           </div>
           <div class="primer-pane inside">
@@ -179,6 +192,7 @@
               <p class="eyebrow">INSIDE VIEW</p>
               <p class="primer-pane-title" id="primer-inside-title"></p>
             </div>
+            <button type="button" class="icon-button primer-reset" data-reset="inside" aria-label="Reset inside view" title="Reset view"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6a5.3 5.3 0 1 1 .7 6M3 2.6V6h3.4"/></svg></button>
             <svg id="primer-inside" role="img">
               <defs>
                 <radialGradient id="primer-ball" cx="0.38" cy="0.32" r="0.75">
@@ -210,8 +224,9 @@
             <button type="button" data-tilt="tilted" aria-pressed="false">Tilted</button>
             <button type="button" data-tilt="corner" aria-pressed="false">Corner first</button>
           </div>
-          <button type="button" id="primer-explore" class="challenge-button" hidden>Open in the explorer <span aria-hidden="true">↑</span></button>
+          <button type="button" id="primer-explore" class="action-button" hidden>Open in the explorer <span aria-hidden="true">↑</span></button>
         </div>
+      </div>
       </div>
     </section>
   </main>

@@ -17,10 +17,6 @@ interface View {
 interface State extends Camera, View {
   angles: Angles;
   offset: number;
-  challenge: boolean;
-  solved: boolean;
-  unlocked: boolean;
-  best: number;
 }
 type ToggleKey = "hiddenEdges" | "spin" | "sweep";
 type Counts = [vertices: number, edges: number, faces: number];
@@ -41,27 +37,15 @@ const samples: Partial<Record<string, { angles: readonly number[]; offset: numbe
 };
 
 const introAngles = [32, -25, 19, 0, 0, 0];
-const challengeAngles = [34, 0, 28, 0, 0, 0];
 const defaultCamera: Camera = { yaw: -0.52, pitch: 0.39 };
 const defaultView: View = { zoom: 1, hiddenEdges: true, spin: false, sweep: false };
 const zoomLimits = [0.5, 3] as const;
-const bestKey = "hyperslice.bestWindow";
 const state: State = {
   angles: [...introAngles],
   offset: 0.35,
   ...defaultCamera,
-  challenge: false,
-  solved: false,
-  unlocked: false,
-  best: loadBest(),
   ...defaultView,
 };
-function loadBest(): number {
-  try { return Number(localStorage.getItem(bestKey)) || 0; } catch { return 0; }
-}
-function saveBest(value: number): void {
-  try { localStorage.setItem(bestKey, String(value)); } catch { /* storage unavailable */ }
-}
 
 function required<T>(value: T | null, what: string): T {
   if (value === null) throw new Error("Missing element: " + what);
@@ -76,11 +60,6 @@ const stage = byId("stage");
 const depth = byId<HTMLInputElement>("depth");
 const depthValue = byId<HTMLInputElement>("depth-value");
 const presets = [...document.querySelectorAll<HTMLButtonElement>("[data-preset]")];
-const challengeButton = byId<HTMLButtonElement>("challenge");
-const challengeCard = required(challengeButton.closest(".challenge"), ".challenge");
-const challengeHint = byId("challenge-hint");
-const challengeStatus = byId("challenge-status");
-const challengeScore = byId("challenge-score");
 const spatialDetails = required(document.querySelector("details"), "details");
 const stats = [byId("vertices"), byId("edges"), byId("faces")];
 const scene = { width: 0, height: 0, frame: 0 };
@@ -179,27 +158,6 @@ function update(): void {
   byId("slice-title").textContent = name;
   byId("empty").hidden = counts[0] > 0;
   describeSlice(name, counts);
-  const matched = state.challenge && current.dimension === 3 && counts[0] === 4 && counts[1] === 6 && counts[2] === 4;
-  state.unlocked = matched;
-  const gap = current.cornerGap;
-  if (matched) {
-    state.solved = true;
-    if (gap > state.best + 1e-9) {
-      state.best = gap;
-      saveBest(gap);
-    }
-  }
-  const { hint, status, score } = challengeText(matched, gap);
-  if (challengeHint.textContent !== hint) challengeHint.textContent = hint;
-  // The live region only changes on milestones; the per-tick numbers live in the score line.
-  if (challengeStatus.textContent !== status) challengeStatus.textContent = status;
-  challengeStatus.classList.toggle("closed", state.solved && !matched);
-  challengeScore.innerHTML = score;
-  showOpenWindow(state.challenge && state.solved ? current : null);
-  challengeCard.classList.toggle("unlocked", matched);
-  const buttonLabel = state.challenge ? "Restart " : "Try the lock ";
-  const labelNode = challengeButton.firstChild;
-  if (labelNode && labelNode.textContent !== buttonLabel) labelNode.textContent = buttonLabel;
   scheduleDraw();
 }
 
@@ -226,49 +184,6 @@ function describeSlice(name: string, [vertexCount, edgeCount, faceCount]: Counts
     announced = summary;
     announcer.textContent = summary;
   }, announceDelay);
-}
-
-const perfectWindow = 0.995;
-function windowRating(gap: number): string {
-  if (gap >= perfectWindow) return "Perfect window";
-  if (gap >= 0.8) return "Great window";
-  if (gap >= 0.5) return "Good window";
-  return "Keep widening";
-}
-
-function challengeText(matched: boolean, gap: number): { hint: string; status: string; score: string } {
-  const bestValue = `<b>${state.best.toFixed(2)}</b>`;
-  const bestLine = state.best > 0 ? `Best window ${bestValue} / 1.00` : "";
-  if (!state.challenge) {
-    return { hint: "Find a tetrahedral slice with 4 vertices, 6 edges, and 4 faces.", status: "", score: bestLine };
-  }
-  if (!state.solved) {
-    return { hint: "Turn YW until the slice has 4 vertices, 6 edges, and 4 faces.", status: "", score: bestLine };
-  }
-  const best = state.best > 0 ? ` · best ${bestValue}` : "";
-  const hint = matched && gap >= perfectWindow
-    ? "Perfect. W now runs along the tesseract's long diagonal, so one corner pokes through a full unit before its neighbours."
-    : "Unlocked. The gold band on the slice slider shows where the lock stays open. Turn any W plane to widen it. The widest possible is 1.00.";
-  return {
-    hint,
-    status: matched ? "Unlocked · " + windowRating(gap) : "Lock closed · move W back into the gold band",
-    score: `Window <b>${gap.toFixed(2)}</b> / 1.00${best}`,
-  };
-}
-
-// Paints the W ranges that hold a lone corner onto the slice slider's track.
-function showOpenWindow(result: Slice | null): void {
-  if (!result || result.cornerGap < 1e-9) {
-    depth.style.removeProperty("--window");
-    return;
-  }
-  const span = Number(depth.max) - Number(depth.min);
-  const at = (value: number) => ((value - Number(depth.min)) / span * 100).toFixed(2) + "%";
-  const inner = result.extent - result.cornerGap;
-  const outer = result.extent;
-  const band = (from: number, to: number) =>
-    `transparent ${at(from)}, var(--gold) ${at(from)}, var(--gold) ${at(to)}, transparent ${at(to)}`;
-  depth.style.setProperty("--window", `linear-gradient(to right, ${band(-outer, -inner)}, ${band(inner, outer)})`);
 }
 
 function scheduleDraw(): void {
@@ -318,8 +233,7 @@ function draw(): void {
   const points = geometry.points.map(project);
   const front = new Set<number>();
   const light = [-0.28, 0.67, 0.69];
-  const open = state.unlocked;
-  const hue = open ? 177 : 28;
+  const hue = 28;
   const fragments: string[] = [];
   const faceLayers = geometry.faces.map(({ indices, normal }) => ({
     indices,
@@ -327,7 +241,7 @@ function draw(): void {
     depth: indices.reduce((sum, index) => sum + points[index][2], 0) / indices.length,
   })).sort((a, b) => a.depth - b.depth);
 
-  const outline = open ? "#76c5c1" : "#e9a970";
+  const outline = "#e9a970";
   // Edge key -> endpoints, and whether any face touching it faces the camera.
   const edgeVisibility = new Map<string, { a: number; b: number; visible: boolean }>();
   for (const { indices, normal } of faceLayers) {
@@ -359,7 +273,7 @@ function draw(): void {
   if (geometry.dimension < 2) points.forEach((_, index) => front.add(index));
   for (const index of front) {
     const [x, y] = points[index];
-    fragments.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.65" fill="${open ? "#b6e0de" : "#f3d1b3"}"/>`);
+    fragments.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.65" fill="#f3d1b3"/>`);
   }
   byId("shape").innerHTML = fragments.join("");
 
@@ -404,16 +318,10 @@ for (const button of presets) {
   });
 }
 byId("reset").addEventListener("click", () => {
-  Object.assign(state, { angles: [...introAngles], offset: 0.35, ...defaultCamera, challenge: false, solved: false });
+  Object.assign(state, { angles: [...introAngles], offset: 0.35, ...defaultCamera });
   setView(defaultView);
   spatialDetails.open = false;
   update();
-});
-challengeButton.addEventListener("click", () => {
-  Object.assign(state, { angles: [...challengeAngles], offset: 1.25, challenge: true, solved: false });
-  setView({ sweep: false });
-  update();
-  rotationInputs[1].input.focus();
 });
 for (const key of toggleKeys) {
   toggles[key].addEventListener("click", () => setView({ [key]: !state[key] }));
@@ -540,6 +448,12 @@ function toggleFullscreen(): void {
   else setExpanded(true);
 }
 fullscreenButton.addEventListener("click", toggleFullscreen);
+// Puts the camera and zoom back without touching the slice.
+function resetView(): void {
+  Object.assign(state, defaultCamera, { zoom: defaultView.zoom });
+  scheduleDraw();
+}
+byId("reset-view").addEventListener("click", resetView);
 document.addEventListener("fullscreenchange", syncFullscreen);
 document.addEventListener("keydown", event => {
   if (event.key === "Escape" && viewport.classList.contains("expanded")) setExpanded(false);
@@ -550,7 +464,9 @@ svg.addEventListener("keydown", event => {
   const zoom = zoomKeys[event.key];
   if (direction) orbit(...direction);
   else if (zoom) zoomBy(zoom);
-  else if ((event.key === "f" || event.key === "F") && !event.metaKey && !event.ctrlKey && !event.altKey) toggleFullscreen();
+  else if (event.metaKey || event.ctrlKey || event.altKey) return;
+  else if (event.key === "f" || event.key === "F") toggleFullscreen();
+  else if (event.key === "r" || event.key === "R") resetView();
   else return;
   event.preventDefault();
 });
@@ -563,7 +479,7 @@ new ResizeObserver(([entry]) => {
 
 // The primer's tesseract step can open its current slice here.
 initPrimer((angles, offset) => {
-  Object.assign(state, { angles, offset, challenge: false, solved: false });
+  Object.assign(state, { angles, offset });
   setView({ sweep: false });
   update();
   const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;

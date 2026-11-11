@@ -3,7 +3,8 @@
 import { dot, slice, type Vector } from "./geometry";
 import { shapeName } from "./shapes";
 
-type StepId = "sphere" | "cube" | "hypersphere" | "tesseract";
+/** "circle", "square", "triangle" and "pyramid" are only lower-dimension rows drawn beside 4D steps; they have no step buttons. */
+type StepId = "line" | "sphere" | "cube" | "hypersphere" | "tesseract" | "circle" | "square" | "triangle" | "pyramid" | "cube-pyramid";
 type Tilt = "straight" | "tilted" | "corner";
 interface Poly { points: Vector[]; normal: Vector }
 /** A slice ready to draw. Points are 3D; flat slices lie in z = 0. */
@@ -21,6 +22,9 @@ const cubeTilts: Record<Tilt, [number, number, number][]> = {
   tilted: [[0, 2, 45]],
   corner: [[0, 2, 45], [1, 2, cornerTilt]],
 };
+// The same idea one dimension down: a square turned in the X/Y plane, sliced along Y.
+// In 2D, tilting 45° already puts a corner first, so the last two match.
+const squareTilts: Record<Tilt, number> = { straight: 0, tilted: 45, corner: 45 };
 // The same three orientations one dimension up, in the explorer's XW YW ZW XY XZ YZ order.
 const tesseractTilts: Record<Tilt, number[]> = {
   straight: [0, 0, 0, 0, 0, 0],
@@ -28,26 +32,60 @@ const tesseractTilts: Record<Tilt, number[]> = {
   corner: [45, cornerTilt, 30, 0, 0, 0],
 };
 
-const steps: Record<StepId, { dims: 3 | 4; noun: string; analog: StepId; title: string; text: string }> = {
+interface Step {
+  dims: 2 | 3 | 4;
+  noun: string;
+  /** For 4D steps: the same idea in lower dimensions, drawn as rows above, lowest first. */
+  analogs: StepId[];
+  title: string;
+  text: string;
+}
+const steps: Record<StepId, Step> = {
+  line: {
+    dims: 3, noun: "line", analogs: [],
+    title: "A line passes through a wall",
+    text: "Start with the simplest case. A line crossing the wall touches it at just one point. Someone living on the wall sees a dot appear, stay put while the line slides through, then vanish. They never see the line itself, only how long the dot lasts. Drop down a dimension and it works the same way: a flat shape crossing a line leaves a line segment. That's the 2D row in steps 4 to 6.",
+  },
   sphere: {
-    dims: 3, noun: "sphere", analog: "sphere",
+    dims: 3, noun: "sphere", analogs: [],
     title: "A sphere passes through a wall",
     text: "Picture someone who lives on the wall and can only see along it. As the ball passes through, they never see the ball. They see a dot appear, grow into a circle, shrink, and vanish.",
   },
   cube: {
-    dims: 3, noun: "cube", analog: "cube",
+    dims: 3, noun: "cube", analogs: [],
     title: "A cube passes through a wall",
     text: "Pushed straight through, a cube leaves the same square on the wall the whole way. Tilt it and the wall sees other shapes: rectangles, or a triangle that grows into a hexagon when a corner leads.",
   },
   hypersphere: {
-    dims: 4, noun: "hypersphere", analog: "sphere",
+    dims: 4, noun: "hypersphere", analogs: ["circle", "sphere"],
     title: "A hypersphere passes through our space",
     text: "Now go up one dimension. A ball is a stack of circles along Z; a 4D ball is a stack of spheres along W. Passing through our space it would look like a point that swells into a sphere, then shrinks away.",
   },
   tesseract: {
-    dims: 4, noun: "tesseract", analog: "cube",
+    dims: 4, noun: "tesseract", analogs: ["square", "cube"],
     title: "A tesseract passes through our space",
-    text: "A cube is a square stretched along Z; a tesseract is a cube stretched along W. Straight on, every slice is the same cube. Tilt it in 4D and the slices become boxes, tetrahedra and octahedra, which is what the explorer above shows.",
+    text: "A cube is a square stretched along Z; a tesseract is a cube stretched along W. Straight on, every slice is the same cube. The famous cube-inside-a-cube picture is the tesseract's shadow, not a slice; its slices never shrink. Tilt it in 4D and the slices become boxes, tetrahedra and octahedra, which is what the explorer above shows.",
+  },
+  pyramid: {
+    dims: 3, noun: "square pyramid", analogs: [],
+    title: "", text: "",
+  },
+  circle: {
+    dims: 2, noun: "circle", analogs: [],
+    title: "", text: "",
+  },
+  square: {
+    dims: 2, noun: "square", analogs: [],
+    title: "", text: "",
+  },
+  triangle: {
+    dims: 2, noun: "triangle", analogs: [],
+    title: "", text: "",
+  },
+  "cube-pyramid": {
+    dims: 4, noun: "cube pyramid", analogs: ["triangle", "pyramid"],
+    title: "A cube pyramid passes through our space",
+    text: "For a cube that really does shrink, build a pyramid on one. A square pyramid joins every corner of a square to a point above it. A cube pyramid joins every corner of a cube to a point one step along W. Base first, our space sees a full cube appear, shrink evenly to a point, and vanish. Two dimensions down it's a triangle crossing a line: a line segment that shrinks to a point.",
   },
 };
 
@@ -175,21 +213,96 @@ function tesseractSection(tilt: Tilt, position: number): Section {
   if (result.points.length === 0) return empty();
   const faces = result.faces.map(({ indices, normal }) => ({ points: indices.map(index => result.points[index]), normal }));
   const name = shapeName(result).replace(/^Flat /, "").replace(/ slice$/, "");
-  return { points: result.points, faces, dimension: result.dimension, name: titleCase(name) };
+  // A flat slice is drawn from its points in order, which only its face has.
+  const points = result.dimension === 2 ? faces[0].points : result.points;
+  return { points, faces, dimension: result.dimension, name: titleCase(name) };
+}
+
+/** A pyramid's base sits at -1 and its apex at +1, so the slice at `position` has this half-width. */
+const pyramidHalf = (position: number): number => (1 - position) / 2;
+
+/** Slices of a pyramid on a segment (a triangle), a square, or a cube, by the base's dimension. */
+function pyramidSection(position: number, base: 1 | 2 | 3): Section {
+  if (Math.abs(position) > 1 + epsilon) return empty();
+  const half = pyramidHalf(position);
+  if (half < 1e-3) return { points: [[0, 0, 0]], faces: [], dimension: 0, name: "Point" };
+  const side = (2 * half).toFixed(2);
+  if (base === 1) return { points: [[-half, 0, 0], [half, 0, 0]], faces: [], dimension: 1, name: "Line · length " + side };
+  if (base === 3) {
+    const faces = cubeFaces.map(({ points, normal }) => ({ points: points.map(point => point.map(value => value * half)), normal }));
+    return { points: cubeVertices.map(vertex => vertex.map(value => value * half)), faces, dimension: 3, name: "Cube · side " + side };
+  }
+  const points = [[-half, -half, 0], [half, -half, 0], [half, half, 0], [-half, half, 0]];
+  return { points, faces: [{ points, normal: [0, 0, 1] }], dimension: 2, name: "Square · side " + side };
+}
+
+/** Slices of a circle or a turned square along Y: line segments along X. */
+function segmentSection(xs: number[]): Section {
+  if (xs.length === 0) return empty();
+  const [low, high] = [Math.min(...xs), Math.max(...xs)];
+  if (high - low < 1e-3) return { points: [[(low + high) / 2, 0, 0]], faces: [], dimension: 0, name: "Point" };
+  return { points: [[low, 0, 0], [high, 0, 0]], faces: [], dimension: 1, name: "Line · length " + (high - low).toFixed(2) };
+}
+
+function circleLine(position: number): Section {
+  const squared = 1 - position * position;
+  if (squared < -epsilon) return empty();
+  const half = Math.sqrt(Math.max(0, squared));
+  return segmentSection([-half, half]);
+}
+
+const squareCorners = (tilt: Tilt): Vector[] =>
+  [[-1, -1, 0], [1, -1, 0], [1, 1, 0], [-1, 1, 0]].map(corner => rotate3(corner, [[0, 1, squareTilts[tilt]]]));
+
+function squareLine(tilt: Tilt, position: number): Section {
+  const corners = squareCorners(tilt);
+  const xs: number[] = [];
+  corners.forEach((a, index) => {
+    const b = corners[(index + 1) % 4];
+    const da = a[1] - position, db = b[1] - position;
+    if (Math.abs(da) < epsilon) xs.push(a[0]);
+    if ((da < -epsilon && db > epsilon) || (da > epsilon && db < -epsilon)) xs.push(a[0] + da / (da - db) * (b[0] - a[0]));
+  });
+  return segmentSection(xs);
+}
+
+function lineSection(position: number): Section {
+  return Math.abs(position) > 1 + epsilon ? empty() : { points: [[0, 0, 0]], faces: [], dimension: 0, name: "Point" };
 }
 
 function extentOf(step: StepId, tilt: Tilt): number {
-  if (step === "sphere" || step === "hypersphere") return 1;
+  if (step === "square") return Math.max(...squareCorners(tilt).map(corner => corner[1]));
+  if (step !== "cube" && step !== "tesseract") return 1;
   if (step === "cube") return Math.max(...cubeVertices.map(vertex => rotate3(vertex, cubeTilts[tilt])[2]));
   return slice(tesseractTilts[tilt], 0).extent;
 }
 
 function sectionOf(step: StepId, tilt: Tilt, position: number): Section {
   switch (step) {
+    case "line": return lineSection(position);
     case "sphere": return circleSection(position);
     case "cube": return squareSection(tilt, position);
     case "hypersphere": return ballSection(position);
     case "tesseract": return tesseractSection(tilt, position);
+    case "circle": return circleLine(position);
+    case "square": return squareLine(tilt, position);
+    case "triangle": return pyramidSection(position, 1);
+    case "pyramid": return pyramidSection(position, 2);
+    case "cube-pyramid": return pyramidSection(position, 3);
+  }
+}
+
+/** What each shape's slices are, for the row labels. Cubes' slices depend on the tilt. */
+function slicesOf(step: StepId, tilt: Tilt): string {
+  switch (step) {
+    case "line": return "points";
+    case "circle": case "square": case "triangle": return "lines";
+    case "sphere": return "circles";
+    case "pyramid": return "squares";
+    case "hypersphere": return "spheres";
+    case "cube-pyramid": return "cubes";
+    case "cube": return { straight: "squares", tilted: "rectangles", corner: "triangles → hexagons" }[tilt];
+    case "tesseract": return { straight: "cubes", tilted: "boxes", corner: "tetrahedra → octahedra" }[tilt];
   }
 }
 
@@ -240,9 +353,9 @@ function sectionSvg(section: Section, projector: Projector, outline = false): st
     return `<polygon points="${screen.map(xy).join(" ")}" ${fill} stroke="${flatStroke}" stroke-width="1.6" stroke-linejoin="round"/>`;
   }
   if (section.dimension === 1) {
-    return `<path d="M${xy(screen[0])}L${xy(screen[1])}" stroke="${flatStroke}" stroke-width="2.4" stroke-linecap="round"/>`;
+    return `<path d="M${xy(screen[0])}L${xy(screen[1])}" stroke="${flatStroke}" stroke-width="3.6" stroke-linecap="round"/>`;
   }
-  return screen.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="${flatStroke}"/>`).join("");
+  return screen.map(([x, y]) => `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="${flatStroke}"/>`).join("");
 }
 
 /** Keeps the part of a polygon on one side of the wall (z = 0). */
@@ -260,20 +373,53 @@ function clip(points: Vector[], side: number): Vector[] {
   return kept;
 }
 
-const wallSize = [2.4, 1.6];
+// Half-width and half-height. Just big enough that a cube at any tilt (up to about
+// 1.4 from its centre across the wall) sits inside it with a little margin.
+const wallSize = [2.8, 1.9];
+// The outside view draws a larger wall so it fills the view around the shape. The
+// scene is still sized from `wallSize`, so the shape stays the same size on screen.
+const outsideWallSize = [3.6, 2.5];
+
+/** Grid lines every half unit across the wall, drawn through `at`. */
+function wallGrid(at: (point: Vector) => string, [w, h]: number[]): string {
+  const lines: string[] = [];
+  for (let x = -Math.floor(w * 2) / 2; x <= w - 0.01; x += 0.5) lines.push(`M${at([x, -h, 0])}L${at([x, h, 0])}`);
+  for (let y = -Math.floor(h * 2) / 2; y <= h - 0.01; y += 0.5) lines.push(`M${at([-w, y, 0])}L${at([w, y, 0])}`);
+  return `<path d="${lines.join("")}" stroke="#48b2ac" stroke-opacity="0.16" stroke-width="1"/>`;
+}
+
+/** Matches the stylesheet's phone breakpoint. */
+const phoneLayout = matchMedia("(max-width: 700px)");
+
+/**
+ * Sizes the scene from the wall as seen by the starting camera, then moves in closer
+ * so the shape fills more of the view; the wall's far edges run past the frame.
+ * It uses the starting camera rather than the current one so dragging doesn't zoom.
+ */
+function wallSceneScale(box: Box): number {
+  const orient = orientFor(defaultCameras.scene);
+  const [w, h] = wallSize;
+  const corners = [[-w, -h, 0], [w, -h, 0], [w, h, 0], [-w, h, 0]].map(orient);
+  const across = Math.max(...corners.map(([x]) => Math.abs(x)));
+  const down = Math.max(...corners.map(([, y]) => Math.abs(y)));
+  const closer = 1.2;
+  return closer * Math.min(box.w / (2 * across), box.h / (2 * down));
+}
 
 function wallScene(box: Box, step: StepId, tilt: Tilt, position: number, section: Section, camera: Camera): string {
   const projector: Projector = {
     orient: orientFor(camera),
     cx: box.x + box.w / 2,
-    cy: box.y + box.h * 0.54,
-    scale: Math.min(box.w / 6.6, box.h / 4.6),
+    // A little above centre so the shape sits higher, except on phones, where the
+    // shorter pane would push it up behind the pane title.
+    cy: box.y + box.h * (phoneLayout.matches ? 0.5 : 0.4),
+    scale: wallSceneScale(box),
   };
   const at = (point: Vector) => xy(toScreen(projector, point));
   // The object sits at -position along Z, so the wall (z = 0) cuts it at `position`.
   const shift = (point: Vector): Vector => [point[0], point[1], point[2] - position];
   const round = step === "sphere";
-  const polys: Poly[] = round
+  const polys: Poly[] = step === "line" ? [] : round
     ? placeMesh(sphere, 1, [0, 0, -position])
     : cubeFaces.map(({ points, normal }) => ({
         points: points.map(point => shift(rotate3(point, cubeTilts[tilt]))),
@@ -284,21 +430,26 @@ function wallScene(box: Box, step: StepId, tilt: Tilt, position: number, section
     return kept.length >= 3 ? [{ points: kept, normal }] : [];
   }));
   const style = round ? roundObjectStyle : objectStyle;
-  const [w, h] = wallSize;
+  // The line runs along Z from -1 to 1, so in the scene it spans these depths.
+  const rod = (from: number, to: number) => from < to
+    ? `<path d="M${at([0, 0, from])}L${at([0, 0, to])}" stroke="#c4bdb3" stroke-width="4" stroke-linecap="round"/>`
+    : "";
+  const [near, far] = [-1 - position, 1 - position];
+  const [w, h] = outsideWallSize;
   const parts: string[] = [];
   parts.push(`<path d="M${at([0, 0, -2.9])}L${at([0, 0, 0])}" stroke="#8a837a" stroke-dasharray="3 5" stroke-width="1"/>`);
   parts.push(solid(back, projector, style));
+  if (step === "line") parts.push(rod(near, Math.min(far, 0)));
   parts.push(`<polygon points="${[[-w, -h, 0], [w, -h, 0], [w, h, 0], [-w, h, 0]].map(at).join(" ")}" fill="#25302f" fill-opacity="0.8" stroke="#76c5c1" stroke-width="1.3" stroke-linejoin="round"/>`);
-  const grid: string[] = [];
-  for (let x = -2; x <= 2; x += 0.5) grid.push(`M${at([x, -h, 0])}L${at([x, h, 0])}`);
-  for (let y = -1.5; y <= 1.5; y += 0.5) grid.push(`M${at([-w, y, 0])}L${at([w, y, 0])}`);
-  parts.push(`<path d="${grid.join("")}" stroke="#48b2ac" stroke-opacity="0.16" stroke-width="1"/>`);
-  const [lx, ly] = toScreen(projector, [-w + 0.12, h - 0.2, 0]);
+  parts.push(wallGrid(at, outsideWallSize));
+  // The wall's corners run off-frame, so label a spot below and right of the shape.
+  const [lx, ly] = toScreen(projector, [1.25, -1.7, 0]);
   parts.push(`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" fill="#76c5c1" font-size="9.5" font-family="ui-monospace, monospace" letter-spacing="1.2">THE WALL</text>`);
   parts.push(sectionSvg(section, projector));
   parts.push(`<path d="M${at([0, 0, 0])}L${at([0, 0, 2.9])}" stroke="#8a837a" stroke-dasharray="3 5" stroke-width="1"/>`);
   // The part in front of the wall is see-through so the slice behind it stays visible.
   parts.push(`<g opacity="0.5">${solid(front, projector, style)}</g>`);
+  if (step === "line") parts.push(rod(Math.max(near, 0), far));
   parts.push(sectionSvg(section, projector, true));
   return parts.join("");
 }
@@ -310,11 +461,8 @@ function flatWall(box: Box, section: Section): string {
     scale: Math.min((box.w - 36) / (2 * w), (box.h - 110) / (2 * h)),
   };
   const at = (point: Vector) => xy(toScreen(projector, point));
-  const grid: string[] = [];
-  for (let x = -2; x <= 2; x += 0.5) grid.push(`M${at([x, -h, 0])}L${at([x, h, 0])}`);
-  for (let y = -1.5; y <= 1.5; y += 0.5) grid.push(`M${at([-w, y, 0])}L${at([w, y, 0])}`);
   return `<polygon points="${[[-w, -h, 0], [w, -h, 0], [w, h, 0], [-w, h, 0]].map(at).join(" ")}" fill="#25302f" stroke="#76c5c1" stroke-width="1.3"/>`
-    + `<path d="${grid.join("")}" stroke="#48b2ac" stroke-opacity="0.16" stroke-width="1"/>`
+    + wallGrid(at, wallSize)
     + sectionSvg(section, projector);
 }
 
@@ -323,12 +471,14 @@ interface StripOptions {
   position: number;
   axis: string;
   label: string;
+  /** Used instead of `label` when the row is too narrow for it. */
+  shortLabel: string;
   at: (position: number) => Section;
   camera?: Camera; // Flat slices are drawn face on; solid ones through this camera.
 }
 
 /** Lays a shape out along its slicing axis as a row of slices, with the live one marked. */
-function strip(box: Box, { extent, position, axis, label, at, camera }: StripOptions): string {
+function strip(box: Box, { extent, position, axis, label, shortLabel, at, camera }: StripOptions): string {
   const count = 7;
   const pad = 18;
   const top = box.y + 26;
@@ -340,7 +490,7 @@ function strip(box: Box, { extent, position, axis, label, at, camera }: StripOpt
   const xAt = (value: number) => box.x + pad + cell / 2 + (value + extent) / (2 * extent) * (box.w - 2 * pad - cell);
   const projector = (cx: number): Projector => ({ orient: camera ? orientFor(camera) : flatOrient, cx, cy, scale });
   const parts: string[] = [];
-  parts.push(`<text x="${box.x + pad}" y="${box.y + 16}" fill="#b0a89e" font-size="10" font-family="ui-monospace, monospace" letter-spacing="0.6">${label}</text>`);
+  parts.push(`<text x="${box.x + pad}" y="${box.y + 16}" fill="#b0a89e" font-size="10" font-family="ui-monospace, monospace" letter-spacing="0.6">${label.length * 6.7 > box.w - 2 * pad ? shortLabel : label}</text>`);
   parts.push(`<path d="M${box.x + pad},${axisY}H${box.x + box.w - pad - 4}" stroke="#55504a" stroke-width="1"/>`);
   parts.push(`<path d="M${box.x + box.w - pad - 9},${axisY - 4}l5,4l-5,4" fill="none" stroke="#55504a" stroke-width="1"/>`);
   parts.push(`<text x="${box.x + box.w - pad}" y="${axisY + 14}" fill="#b0a89e" font-size="10" font-family="ui-monospace, monospace" text-anchor="end">${axis}</text>`);
@@ -363,6 +513,11 @@ function strip(box: Box, { extent, position, axis, label, at, camera }: StripOpt
 
 // ---------- App ----------
 
+function required<T>(value: T | null): T {
+  if (value === null) throw new Error("Missing primer element");
+  return value;
+}
+
 function byId<T extends Element = HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) throw new Error("Missing element: #" + id);
@@ -372,6 +527,11 @@ function byId<T extends Element = HTMLElement>(id: string): T {
 const signed = (value: number): string => {
   const rounded = Number(value.toFixed(2));
   return (rounded > 0 ? "+" : rounded < 0 ? "−" : "") + Math.abs(rounded).toFixed(2);
+};
+
+const defaultCameras: Record<"scene" | "solid", Camera> = {
+  scene: { yaw: -0.82, pitch: 0.3 },
+  solid: { yaw: -0.55, pitch: 0.42 },
 };
 
 /** Sets up the primer. `explore` opens a tesseract orientation and slice in the main explorer. */
@@ -386,6 +546,9 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
   const play = byId<HTMLButtonElement>("primer-play");
   const tiltGroup = byId("primer-tilt");
   const exploreButton = byId<HTMLButtonElement>("primer-explore");
+  const outsideReset = required(root.querySelector<HTMLButtonElement>("[data-reset=outside]"));
+  const insideReset = required(root.querySelector<HTMLButtonElement>("[data-reset=inside]"));
+  const viewer = byId("primer-viewer");
   const stepButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-step]")];
   const tiltButtons = [...root.querySelectorAll<HTMLButtonElement>("[data-tilt]")];
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -398,11 +561,17 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
     visible: false,
     touched: false,
     direction: 1,
-    scene: { yaw: -0.82, pitch: 0.3 } as Camera,
-    solid: { yaw: -0.55, pitch: 0.42 } as Camera,
+    scene: { ...defaultCameras.scene },
+    solid: { ...defaultCameras.solid },
   };
   const size = new Map<SVGSVGElement, [number, number]>();
   let frame = 0;
+
+  // On phones in full screen the steps scroll sideways; keep the current one in sight.
+  function revealStep(): void {
+    if (!viewer.classList.contains("is-full")) return;
+    stepButtons.find(button => button.dataset.step === state.step)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
 
   function render(): void {
     const { step, tilt } = state;
@@ -418,28 +587,38 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
       if (config.dims === 3) {
         const stripHeight = Math.max(74, Math.min(110, oh * 0.25));
         const head = 56; // Keeps the scene clear of the pane title.
-        outsideShape.innerHTML = wallScene({ x: 0, y: head, w: ow, h: oh - stripHeight - head }, step, tilt, position, section, state.scene)
+        // Up close the wall runs past the scene's edges, so clip it above the row of slices.
+        outsideShape.innerHTML = `<clipPath id="primer-scene-clip"><rect width="${ow}" height="${oh - stripHeight}"/></clipPath>`
+          + `<g clip-path="url(#primer-scene-clip)">`
+          + wallScene({ x: 0, y: head, w: ow, h: oh - stripHeight - head }, step, tilt, position, section, state.scene)
+          + `</g>`
           + `<path d="M0,${oh - stripHeight}H${ow}" stroke="#4a4540"/>`
           + strip({ x: 0, y: oh - stripHeight, w: ow, h: stripHeight }, {
-            extent, position, axis: "Z", label: `EVERY SLICE OF THE ${config.noun.toUpperCase()}, LAID OUT ALONG Z`,
+            extent, position, axis: "Z", label: `EVERY SLICE OF THE ${config.noun} (${slicesOf(step, tilt)}), LAID OUT ALONG Z`.toUpperCase(),
+            shortLabel: `THE ${config.noun} (${slicesOf(step, tilt)}) ALONG Z`.toUpperCase(),
             at: value => sectionOf(step, tilt, value),
           });
       } else {
-        // 4D can't be drawn whole, so show the 3D shape and its 4D cousin as rows of slices.
-        const analog = config.analog;
-        const analogExtent = extentOf(analog, tilt);
-        const head = 64;
-        const split = head + (oh - head) * 0.38;
-        outsideShape.innerHTML = strip({ x: 0, y: head, w: ow, h: split - head }, {
-          extent: analogExtent, position: state.t * analogExtent, axis: "Z",
-          label: `3D · A ${steps[analog].noun.toUpperCase()} IS A STACK OF SLICES ALONG Z`,
-          at: value => sectionOf(analog, tilt, value),
-        }) + `<path d="M18,${split}H${ow - 18}" stroke="#4a4540" stroke-dasharray="2 4"/>`
-          + strip({ x: 0, y: split + 4, w: ow, h: oh - split - 4 }, {
-            extent, position, axis: "W",
-            label: `4D · A ${config.noun.toUpperCase()} IS A STACK OF SLICES ALONG W`,
-            at: value => sectionOf(step, tilt, value), camera: state.solid,
-          });
+        // 4D can't be drawn whole, so show it and its lower-dimension cousins as rows of slices.
+        const rows = [...config.analogs, step];
+        const axes: Record<number, string> = { 2: "Y", 3: "Z", 4: "W" };
+        const weight = (id: StepId) => [0, 0, 0.75, 1, 1.6][steps[id].dims];
+        const total = rows.reduce((sum, id) => sum + weight(id), 0);
+        let y = 64;
+        outsideShape.innerHTML = rows.map((id, index) => {
+          const rowExtent = extentOf(id, tilt);
+          const dims = steps[id].dims;
+          const height = (oh - 64) * weight(id) / total;
+          const row = (index ? `<path d="M18,${y}H${ow - 18}" stroke="#4a4540" stroke-dasharray="2 4"/>` : "")
+            + strip({ x: 0, y: y + (index ? 4 : 0), w: ow, h: height - (index ? 4 : 0) }, {
+              extent: rowExtent, position: state.t * rowExtent, axis: axes[dims],
+              label: `${dims}D · A ${steps[id].noun} IS A STACK OF SLICES (${slicesOf(id, tilt)}) ALONG ${axes[dims]}`.toUpperCase(),
+              shortLabel: `${dims}D · ${steps[id].noun} (${slicesOf(id, tilt)}) ALONG ${axes[dims]}`.toUpperCase(),
+              at: value => sectionOf(id, tilt, value), camera: dims === 4 ? state.solid : undefined,
+            });
+          y += height;
+          return row;
+        }).join("");
       }
     }
 
@@ -465,7 +644,7 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
     range.style.setProperty("--position", (state.t + travel) / (2 * travel) * 100 + "%");
     outside.setAttribute("aria-label", config.dims === 3
       ? `A ${noun} crossing a flat wall at ${coordinate}, with every slice laid out along Z below.`
-      : `Every slice of a ${steps[config.analog].noun} laid out along Z, above every slice of a ${noun} laid out along W, marked at ${coordinate}.`);
+      : `Every slice of ${[...config.analogs.map(id => "a " + steps[id].noun), "a " + noun].join(", then ")}, each laid out in a row, marked at ${coordinate}.`);
     inside.setAttribute("aria-label", `${config.dims === 3 ? "What the wall sees" : "What we see"}: ${readout}`);
   }
 
@@ -481,13 +660,15 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
     const config = steps[state.step];
     for (const button of stepButtons) button.setAttribute("aria-pressed", String(button.dataset.step === state.step));
     for (const button of tiltButtons) button.setAttribute("aria-pressed", String(button.dataset.tilt === state.tilt));
-    tiltGroup.hidden = state.step === "sphere" || state.step === "hypersphere";
+    tiltGroup.hidden = state.step !== "cube" && state.step !== "tesseract";
     exploreButton.hidden = state.step !== "tesseract";
     byId("primer-step-title").textContent = config.title;
     byId("primer-step-text").textContent = config.text;
     byId("primer-outside-title").textContent = config.dims === 3 ? `The ${config.noun} and the wall` : "Too big to draw whole, so lay it out";
     byId("primer-inside-title").textContent = config.dims === 3 ? "What the wall sees" : "What we see in 3D";
     inside.classList.toggle("draggable", config.dims === 4);
+    // The flat wall view has no camera, so it has nothing to reset.
+    insideReset.hidden = config.dims === 3;
     play.setAttribute("aria-pressed", String(state.playing));
     play.querySelector("span")!.textContent = state.playing ? "Pause" : "Play";
     animate();
@@ -526,6 +707,7 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
     button.addEventListener("click", () => {
       state.step = button.dataset.step as StepId;
       sync();
+      revealStep();
     });
   }
   for (const button of tiltButtons) {
@@ -549,6 +731,7 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
     const position = state.t * extentOf(state.step, state.tilt);
     state.playing = false;
     sync();
+    exitFullscreen();
     explore([...tesseractTilts[state.tilt]], Math.round(Math.max(-2, Math.min(2, position)) * 100) / 100);
   });
 
@@ -580,6 +763,55 @@ export function initPrimer(explore: (angles: number[], offset: number) => void):
     }
   }
   outside.classList.add("draggable");
+
+  // Full screen works like the explorer's: the Fullscreen API where the browser
+  // allows it on an element, otherwise the section is stretched over the page.
+  const fullscreenButton = byId<HTMLButtonElement>("primer-fullscreen");
+  const isFullscreen = () => document.fullscreenElement === viewer || viewer.classList.contains("expanded");
+  function syncFullscreen(): void {
+    const on = isFullscreen();
+    viewer.classList.toggle("is-full", on);
+    revealStep();
+    fullscreenButton.setAttribute("aria-pressed", String(on));
+    fullscreenButton.setAttribute("aria-label", on ? "Exit full screen" : "Full screen");
+    fullscreenButton.title = (on ? "Exit full screen" : "Full screen") + " (F)";
+  }
+  function setExpanded(on: boolean): void {
+    viewer.classList.toggle("expanded", on);
+    document.body.classList.toggle("viewer-expanded", on);
+    syncFullscreen();
+  }
+  function toggleFullscreen(): void {
+    if (document.fullscreenElement === viewer) void document.exitFullscreen();
+    else if (viewer.classList.contains("expanded")) setExpanded(false);
+    else if (document.fullscreenEnabled) viewer.requestFullscreen().catch(() => setExpanded(true));
+    else setExpanded(true);
+  }
+  function exitFullscreen(): void {
+    if (document.fullscreenElement === viewer) void document.exitFullscreen();
+    if (viewer.classList.contains("expanded")) setExpanded(false);
+  }
+  fullscreenButton.addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", syncFullscreen);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && viewer.classList.contains("expanded")) setExpanded(false);
+  });
+  viewer.addEventListener("keydown", event => {
+    if (event.key !== "f" && event.key !== "F") return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    toggleFullscreen();
+    event.preventDefault();
+  });
+  // Outside resets whichever camera that pane uses; inside always uses the solid camera.
+  outsideReset.addEventListener("click", () => {
+    if (steps[state.step].dims === 3) Object.assign(state.scene, defaultCameras.scene);
+    else Object.assign(state.solid, defaultCameras.solid);
+    schedule();
+  });
+  insideReset.addEventListener("click", () => {
+    Object.assign(state.solid, defaultCameras.solid);
+    schedule();
+  });
 
   const resize = new ResizeObserver(entries => {
     for (const entry of entries) {

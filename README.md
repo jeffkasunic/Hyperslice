@@ -22,13 +22,11 @@ tesseract and beyond, see
 - **View options:** show or hide hidden edges, auto-rotate, and sweep W
   automatically.
 - **Sample slices:** jump to a cube, rectangular box, triangular, pentagonal or hexagonal prism, tetrahedron, truncated tetrahedron or octahedron.
-- **One dimension down:** a guided section that pushes a sphere and a cube
-  through a flat wall, then a hypersphere and a tesseract through 3D space,
+- **One dimension down:** a guided section that pushes a line, a sphere and a cube
+  through a flat wall, then a hypersphere, a tesseract and a cube pyramid through 3D space,
   laying each shape out as a row of slices so the 3D → 2D case can be
   compared with the 4D → 3D one. The tesseract step can open its current slice
-  in the explorer.
-- **Shape lock challenge:** find a tetrahedral slice. Your best score is saved
-  in the browser.
+  in the explorer, and the section has its own full screen mode.
 
 ### Controls
 
@@ -73,7 +71,8 @@ index.html            Page markup
 assets/               README screenshot (not part of the build)
 public/               Favicons, copied to dist/ as-is
 src/
-  main.ts             UI, rendering, input and the challenge
+  main.ts             Explorer UI, rendering and input
+  primer.ts           "How a slice works" section: one dimension down
   geometry.ts         Tesseract, 4D plane rotations and slicing at W = offset
   shapes.ts           Names a slice from its faces and measurements
   styles.css          Styles
