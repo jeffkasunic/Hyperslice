@@ -277,7 +277,7 @@ function draw(): void {
       grid.push(`<path d="M${svgPoint(project(row[0]))}L${svgPoint(project(row[1]))}" opacity="${index === 0 ? 0.47 : 0.29}"/>`);
     }
   }
-  byId("grid").innerHTML = `<g stroke="#5a544d" stroke-width="1" fill="none">${grid.join("")}</g>`;
+  byId("grid").innerHTML = `<g stroke="#7a7269" stroke-width="1" fill="none">${grid.join("")}</g>`;
 
   const points = geometry.points.map(project);
   const front = new Set<number>();
@@ -336,7 +336,7 @@ function draw(): void {
   }).sort((a, b) => a.z - b.z);
   byId("axis").innerHTML = `<svg width="60" height="60" viewBox="0 0 60 60">${axes.map(({ label, color, end, text }) =>
     `<path d="M27,32L${svgPoint(end)}" stroke="${color}" stroke-width="1.3"/><text x="${text[0]}" y="${text[1]}" fill="${color}" text-anchor="middle" font-size="9" font-family="monospace">${label}</text>`
-  ).join("")}<circle cx="27" cy="32" r="2" fill="#e6e1da"/></svg>`;
+  ).join("")}<circle cx="27" cy="32" r="2" fill="#e3dcd1"/></svg>`;
 }
 
 // Any direct change to the slice position takes over from the W sweep.
